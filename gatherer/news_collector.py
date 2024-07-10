@@ -5,10 +5,9 @@ import asyncio
 import re
 from bs4 import BeautifulSoup
 from fake_useragent import UserAgent
-from constants import NEWS_DICT
+from gatherer.constants import NEWS_DICT
 
 ua = UserAgent()
-
 
 async def fetch_html(session, link):
     try:
@@ -30,7 +29,9 @@ async def extract_article(html, link, title_selector, paragraphs_selector):
         paragraphs = soup.select(paragraphs_selector)
         text = "\n".join([paragraph.getText() for paragraph in paragraphs])
         return {
-            "title": re.sub(r"\s+", " ", title.encode().decode("unicode_escape")).strip(),
+            "title": re.sub(
+                r"\s+", " ", title.encode().decode("unicode_escape")
+            ).strip(),
             "text": re.sub(r"\s+", " ", text.encode().decode("unicode_escape")).strip(),
             "link": link,
         }
@@ -74,7 +75,7 @@ async def fetch_articles(
         ]
         results = await asyncio.gather(*tasks)
 
-    data = [result for result in results if result is not None]
+    data = {source : [result for result in results if result is not None]}
 
     with open(data_path, "w") as f:
         json.dump(data, f, indent=4)
@@ -82,8 +83,10 @@ async def fetch_articles(
     print(f"\nAll articles found from {source} and extracted!")
     print(f"Total number of articles: {len(data)}")
 
+    return data
 
-async def main():
+
+async def gather(limit=30):
     tasks = []
     for source, (
         data_path,
@@ -99,15 +102,20 @@ async def main():
             title_selector=title_selector,
             paragraphs_selector=paragraphs_selector,
             link_selector=link_selector,
+            limit=limit
         )
         tasks.append(task)
 
     start = time.time()
-    await asyncio.gather(*tasks)
+    results_raw = await asyncio.gather(*tasks)
+    results = {key : value for item in results_raw for key, value in item.items()}
+        
+    with open("data/raw_news.json", "w") as f:
+        json.dump(results, f, indent=4)
     end = time.time()
 
     print(f"Total time to collect news: {end - start}s \n")
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(gather())

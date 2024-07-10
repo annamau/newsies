@@ -1,15 +1,15 @@
 import json, time, ollama
-from tools import printProgressBar as printP
+from summarizer.tools import printProgressBar as printP
 
 
 def summarize():
-    with open("data/raw_data.json", "r") as f:
+    with open("data/raw_news.json", "r") as f:
         conf = json.load(f)
 
     data = {}
+    i = 0
     for key, items in conf.items():
         if items is not None:
-            i = 0
             total_items = len(items) * len(conf)
             printP(0, total_items, prefix=f"  - Summarizing {key} ", suffix="Complete", length=50)
             for item in items:
@@ -31,7 +31,7 @@ def summarize():
                 i += 1
 
     with open("data/summarized.json", "w") as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=4)
 
 def __create_structure(item):
     return {
